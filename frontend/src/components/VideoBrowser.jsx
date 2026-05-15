@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listVideos } from '../api/client'
+import { useStore } from '../store'
 
 function fmtDuration(s) {
   const m = Math.floor(s / 60)
@@ -7,8 +8,9 @@ function fmtDuration(s) {
   return `${m}:${sec.toString().padStart(4, '0')}`
 }
 
-export default function VideoBrowser({ onSelect, selected }) {
+export default function VideoBrowser() {
   const [videos, setVideos] = useState([])
+  const { selected, select } = useStore()
 
   useEffect(() => {
     listVideos().then(setVideos)
@@ -23,7 +25,7 @@ export default function VideoBrowser({ onSelect, selected }) {
         return (
           <button
             key={video.id}
-            onClick={() => onSelect(video)}
+            onClick={() => select('video', video)}
             className={`text-left rounded-lg border transition-all overflow-hidden
               ${isSelected
                 ? 'border-accent ring-1 ring-accent'
