@@ -82,15 +82,37 @@ React + Vite + Tailwind. Seven views, all wired to mock data by default — swap
 
 Detail panel shows ProvenanceTree (recursive lineage), AudioFeatures meters, VideoFrameScrubber, and all analysis results for the selected item.
 
-### Run locally
+### Install and run (Windows)
 
-```bash
-cd frontend
-npm install
-npm run dev
+Paste this into PowerShell. It installs Docker, Python, Node, ffmpeg, spins up
+PostgreSQL with pgvector, loads the schema, and installs all dependencies.
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass; .\install.ps1
 ```
 
-**[Or open instantly in StackBlitz →](https://stackblitz.com/github/Penny-Admixture/awesome-vst/tree/main/frontend)**
+After that, every session:
+
+```powershell
+.\start.ps1          # starts DB + frontend, opens browser
+```
+
+To ingest a track and extract loops:
+
+```powershell
+.\.venv\Scripts\python -m workers.beat_slicer ingest "C:\music\drdre.wav"
+.\.venv\Scripts\python -m workers.beat_slicer ingest "C:\music\drdre.wav" --config grid_dense
+.\.venv\Scripts\python -m workers.beat_slicer ingest "C:\music\drdre.wav" --dry-run   # preview only
+.\.venv\Scripts\python -m workers.beat_slicer configs   # list extraction configs
+```
+
+### Frontend only (StackBlitz / mock data)
+
+**[Open instantly in StackBlitz →](https://stackblitz.com/github/Penny-Admixture/awesome-vst/tree/main/frontend)**
+
+```bash
+cd frontend && npm install && npm run dev
+```
 
 ---
 
