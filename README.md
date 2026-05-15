@@ -94,10 +94,63 @@ npm run dev
 
 ---
 
+## Analysis models
+
+### Image — Qwen3-VL-8B Instruct
+Use the **Instruct** variant, not Thinking. Thinking mode adds chain-of-thought which wastes tokens on batch captioning tasks where you want consistent structured output. Instruct handles captions, tag sets, bounding boxes, and dominant colors reliably.
+
+Register once:
+```sql
+INSERT INTO roseglassdb_analysis_models (name, version, modality)
+VALUES ('qwen3-vl-8b-instruct', '8B', 'image');
+```
+
+### Audio — hybrid: Essentia + AF-Next Captioner
+Two models, two jobs, stored as separate `analysis_type` rows:
+
+| model | analysis_type | what it produces |
+|---|---|---|
+| `essentia` | `beat_grid` | BPM, beat positions ms[], downbeats ms[], key confidence |
+| `essentia` | `audio_features` | key, spectral centroid, danceability, loudness, dynamics |
+| `af-next-captioner` | `caption` | free-text "Pitchfork-style" summary |
+| `af-next-captioner` | `tags` | genre[], mood[], instruments[], vocals, era |
+
+BPM/key are deterministic facts → Essentia. Genre/mood/instruments are probabilistic opinions → AF-Next (Audio Flamingo Next, NVIDIA/UMD). Keep them separate so you can re-run a better captioner later without touching the MIR outputs.
+
+Music Flamingo (DeepMind) is an alternative for the semantic layer — both fit the schema identically.
+
+---
+
+## Beat slicing / measure extraction
+
+`db/beat_slicing.sql` adds a pipeline for mining a long WAV (track or DJ mix) into loops.
+
+**Flow:**
+1. Ingest WAV → `roseglassdb_master_audio`
+2. Run Essentia beat tracker → `roseglassdb_media_analysis` with `analysis_type = 'beat_grid'`
+   ```json
+   { "bpm": 128.5, "beats_ms": [0, 468, 937, ...], "downbeats_ms": [0, 1875, 3750, ...], "beat_confidence": 0.94 }
+   ```
+3. Pick an extraction config (`roseglassdb_loop_extraction_configs`) — built-in presets:
+   - `downbeat_standard` — 1/2/4/8-bar loops on the downbeat
+   - `grid_dense` — all four beat offsets as 1-bar loops (finds syncopated entry points)
+   - `halfbar_offsets` — downbeat + half-bar offset pairs
+   - `phrase_coarse` — 4/8/16/32-bar blocks for DJ mixes
+4. Preview before committing: `SELECT * FROM preview_extraction_slices(beat_analysis_id, config_id);`
+5. Worker runs, slices audio via ffmpeg → new `roseglassdb_master_audio` rows + `roseglassdb_audio_loops` links
+6. LISTEN on `loop_extraction_complete` for next-step automation
+
+Each loop lands in `roseglassdb_audio_loops` with `offset_ms` (exact position) and `offset_musical` (label like `"4bar-phrase"`), queryable with `listLoops({ sourceAudioId })`.
+
+---
+
 ## Stack
 
 - PostgreSQL + pgvector
 - PostgREST (recommended API layer)
 - React 18 + Vite + Tailwind CSS + Zustand
+- Essentia (MIR: BPM, beats, key, spectral)
+- AF-Next Captioner / Music Flamingo (audio semantic layer)
+- Qwen3-VL-8B Instruct (image captioning/tagging)
 - HNSW index for embedding similarity
-- PostgreSQL LISTEN/NOTIFY for auto-analysis worker pattern
+- PostgreSQL LISTEN/NOTIFY for worker automation
