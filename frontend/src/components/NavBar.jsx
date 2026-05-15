@@ -1,7 +1,9 @@
 const VIEWS = [
-  { id: 'images', label: 'Images' },
-  { id: 'audio',  label: 'Audio' },
-  { id: 'video',  label: 'Video' },
+  { id: 'images',     label: 'Images' },
+  { id: 'audio',      label: 'Audio' },
+  { id: 'video',      label: 'Video' },
+  { id: 'transforms', label: 'Transforms' },
+  { id: 'loops',      label: 'Loops' },
 ]
 
 export default function NavBar({ view, onViewChange }) {

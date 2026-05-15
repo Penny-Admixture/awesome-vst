@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listAudio } from '../api/client'
+import { useStore } from '../store'
 
 function fmtDuration(s) {
   const m = Math.floor(s / 60)
@@ -27,8 +28,9 @@ function AudioWaveformPlaceholder() {
   )
 }
 
-export default function AudioBrowser({ onSelect, selected }) {
+export default function AudioBrowser() {
   const [tracks, setTracks] = useState([])
+  const { selected, select } = useStore()
 
   useEffect(() => {
     listAudio().then(setTracks)
@@ -43,7 +45,7 @@ export default function AudioBrowser({ onSelect, selected }) {
         return (
           <button
             key={track.id}
-            onClick={() => onSelect(track)}
+            onClick={() => select('audio', track)}
             className={`text-left p-3 rounded-lg border transition-all
               ${isSelected
                 ? 'border-accent ring-1 ring-accent bg-accent/5'

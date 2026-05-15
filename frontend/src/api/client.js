@@ -1,7 +1,16 @@
 // API client — all calls proxy to /api (see vite.config.js → http://localhost:8000)
 // Falls back to mock data when the server is not running.
+//
+// PostgREST tip: if you run PostgREST pointed at your DB, the table names map
+// directly to endpoints with zero backend code:
+//   GET /roseglassdb_master_images?tags=cs.{landscape}
+//   GET /fsviewer_transform_sequences?select=*,fsviewer_sequence_steps(*)
+// Update the base URL and remove the /api prefix to use it directly.
 
-import { mockImages, mockAudio, mockVideos } from '../data/mock'
+import {
+  mockImages, mockAudio, mockVideos,
+  mockTransforms, mockSequences, mockLoops, mockArrangementTemplates,
+} from '../data/mock'
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true' || true
 
@@ -60,6 +69,41 @@ export async function getVideoFrames(id, { limit = 100, offset = 0 } = {}) {
     return v?.frames ?? []
   }
   return get(`/videos/${id}/frames?limit=${limit}&offset=${offset}`)
+}
+
+// ── Transforms ───────────────────────────────────────────────────────────────
+
+export async function listTransforms() {
+  if (USE_MOCK) return mockTransforms
+  return get('/fsviewer_transforms')
+}
+
+export async function listSequences() {
+  if (USE_MOCK) return mockSequences
+  return get('/fsviewer_transform_sequences?select=*,fsviewer_sequence_steps(*)')
+}
+
+export async function getSequence(id) {
+  if (USE_MOCK) return mockSequences.find(s => s.id === id)
+  return get(`/fsviewer_transform_sequences/${id}?select=*,fsviewer_sequence_steps(*)`)
+}
+
+// ── Loops ─────────────────────────────────────────────────────────────────────
+
+export async function listLoops({ sourceAudioId } = {}) {
+  if (USE_MOCK) {
+    return sourceAudioId
+      ? mockLoops.filter(l => l.source_audio_id === sourceAudioId)
+      : mockLoops
+  }
+  const params = new URLSearchParams()
+  if (sourceAudioId) params.set('source_audio_id', `eq.${sourceAudioId}`)
+  return get(`/roseglassdb_audio_loops?${params}`)
+}
+
+export async function listArrangementTemplates() {
+  if (USE_MOCK) return mockArrangementTemplates
+  return get('/roseglassdb_loop_arrangement_templates?select=*,roseglassdb_loop_arrangement_template_steps(*)')
 }
 
 // ── Analysis ─────────────────────────────────────────────────────────────────

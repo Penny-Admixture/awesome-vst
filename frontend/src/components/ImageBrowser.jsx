@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
 import { listImages } from '../api/client'
+import { useStore } from '../store'
 
 function fmt(bytes) {
   if (bytes > 1e6) return `${(bytes / 1e6).toFixed(1)} MB`
   return `${(bytes / 1e3).toFixed(0)} KB`
 }
 
-export default function ImageBrowser({ onSelect, selected }) {
+export default function ImageBrowser() {
   const [images, setImages] = useState([])
+  const { selected, select } = useStore()
 
   useEffect(() => {
     listImages().then(setImages)
@@ -21,7 +23,7 @@ export default function ImageBrowser({ onSelect, selected }) {
           return (
             <button
               key={img.id}
-              onClick={() => onSelect(img)}
+              onClick={() => select('image', img)}
               className={`group text-left rounded-lg overflow-hidden border transition-all
                 ${isSelected
                   ? 'border-accent ring-1 ring-accent'

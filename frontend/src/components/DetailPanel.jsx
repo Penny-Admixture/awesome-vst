@@ -1,5 +1,7 @@
 import VideoFrameScrubber from './VideoFrameScrubber'
 import AudioFeatures from './AudioFeatures'
+import ProvenanceTree from './ProvenanceTree'
+import TransformGraph from './TransformGraph'
 
 export default function DetailPanel({ type, item, onClose }) {
   return (
@@ -10,9 +12,10 @@ export default function DetailPanel({ type, item, onClose }) {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {type === 'image' && <ImageDetail item={item} />}
-        {type === 'audio' && <AudioDetail item={item} />}
-        {type === 'video' && <VideoDetail item={item} />}
+        {type === 'image'    && <ImageDetail item={item} />}
+        {type === 'audio'    && <AudioDetail item={item} />}
+        {type === 'video'    && <VideoDetail item={item} />}
+        {type === 'sequence' && <SequenceDetail item={item} />}
       </div>
     </aside>
   )
@@ -33,6 +36,7 @@ function ImageDetail({ item }) {
         ['size', fmtBytes(item.byte_length)],
         ['id', item.id],
       ]} />
+      <ProvenanceTree item={item} type="image" />
       <AnalysisList analysis={item.analysis} />
     </div>
   )
@@ -53,7 +57,24 @@ function AudioDetail({ item }) {
         ['id', item.id],
       ]} />
       <AudioFeatures analysis={item.analysis} />
+      <ProvenanceTree item={item} type="audio" />
       <AnalysisList analysis={item.analysis} skipTypes={['audio_features']} />
+    </div>
+  )
+}
+
+// ── Sequence ──────────────────────────────────────────────────────────────────
+
+function SequenceDetail({ item }) {
+  return (
+    <div className="p-4 flex flex-col gap-4">
+      <MetaTable rows={[
+        ['name', item.name],
+        ['id', item.id],
+        ['category', item.category_id ?? '—'],
+        ['steps', item.steps.length],
+      ]} />
+      <TransformGraph sequence={item} />
     </div>
   )
 }
