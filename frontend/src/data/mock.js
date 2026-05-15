@@ -423,3 +423,70 @@ export const mockDSPSequences = [
     ],
   },
 ]
+
+// ── Stems ─────────────────────────────────────────────────────────────────────
+
+export const mockStemJobs = [
+  {
+    id: 1,
+    source_audio_id: 1,
+    source_filename: 'hex_loop_01.flac',
+    splitter_name: 'demucs-htdemucs',
+    splitter_method: 'ml',
+    status: 'complete',
+    stems_produced: 4,
+    finished_at: '2026-05-15T10:22:00Z',
+  },
+  {
+    id: 2,
+    source_audio_id: 1,
+    source_filename: 'hex_loop_01.flac',
+    splitter_name: 'crossover-4band',
+    splitter_method: 'crossover',
+    status: 'complete',
+    stems_produced: 4,
+    finished_at: '2026-05-15T10:23:00Z',
+  },
+]
+
+export const mockStems = [
+  { id: 1,  job_id: 1, stem_label: 'drums',    stem_index: 0, energy_fraction: 0.31, duration_seconds: 3.72, original_filename: 'hex_loop_01_drums.wav' },
+  { id: 2,  job_id: 1, stem_label: 'bass',     stem_index: 1, energy_fraction: 0.28, duration_seconds: 3.72, original_filename: 'hex_loop_01_bass.wav' },
+  { id: 3,  job_id: 1, stem_label: 'vocals',   stem_index: 2, energy_fraction: 0.04, duration_seconds: 3.72, original_filename: 'hex_loop_01_vocals.wav' },
+  { id: 4,  job_id: 1, stem_label: 'other',    stem_index: 3, energy_fraction: 0.37, duration_seconds: 3.72, original_filename: 'hex_loop_01_other.wav' },
+  { id: 5,  job_id: 2, stem_label: 'low',      stem_index: 0, energy_fraction: 0.41, duration_seconds: 3.72, original_filename: 'hex_loop_01_low.wav' },
+  { id: 6,  job_id: 2, stem_label: 'low_mid',  stem_index: 1, energy_fraction: 0.29, duration_seconds: 3.72, original_filename: 'hex_loop_01_low_mid.wav' },
+  { id: 7,  job_id: 2, stem_label: 'high_mid', stem_index: 2, energy_fraction: 0.19, duration_seconds: 3.72, original_filename: 'hex_loop_01_high_mid.wav' },
+  { id: 8,  job_id: 2, stem_label: 'high',     stem_index: 3, energy_fraction: 0.11, duration_seconds: 3.72, original_filename: 'hex_loop_01_high.wav' },
+]
+
+// ── Sample library ────────────────────────────────────────────────────────────
+
+export const mockSamples = [
+  { id: 1,  instrument_family: 'drums',   instrument_category: 'kick',         onset_ms:    0, duration_ms: 480, peak_db: -6.1,  velocity_estimate: 110, original_filename: 'drdre_kick_000000ms.wav',         near_duplicate_of: null },
+  { id: 2,  instrument_family: 'drums',   instrument_category: 'snare',        onset_ms:  937, duration_ms: 320, peak_db: -9.4,  velocity_estimate:  98, original_filename: 'drdre_snare_000937ms.wav',        near_duplicate_of: null },
+  { id: 3,  instrument_family: 'drums',   instrument_category: 'hihat_closed', onset_ms:  234, duration_ms:  80, peak_db: -14.2, velocity_estimate:  72, original_filename: 'drdre_hihat_closed_000234ms.wav', near_duplicate_of: null },
+  { id: 4,  instrument_family: 'drums',   instrument_category: 'hihat_closed', onset_ms:  468, duration_ms:  75, peak_db: -15.8, velocity_estimate:  68, original_filename: 'drdre_hihat_closed_000468ms.wav', near_duplicate_of: 3 },
+  { id: 5,  instrument_family: 'drums',   instrument_category: 'kick',         onset_ms: 1875, duration_ms: 460, peak_db: -6.8,  velocity_estimate: 105, original_filename: 'drdre_kick_001875ms.wav',         near_duplicate_of: 1 },
+  { id: 6,  instrument_family: 'drums',   instrument_category: 'clap',         onset_ms: 1875, duration_ms: 210, peak_db: -11.0, velocity_estimate:  88, original_filename: 'drdre_clap_001875ms.wav',         near_duplicate_of: null },
+  { id: 7,  instrument_family: 'melodic', instrument_category: 'synth_stab',   onset_ms:  500, duration_ms: 650, peak_db: -8.3,  velocity_estimate:  95, original_filename: 'drdre_synth_stab_000500ms.wav',   near_duplicate_of: null },
+  { id: 8,  instrument_family: 'bass',    instrument_category: 'bass_note',    onset_ms:    0, duration_ms: 920, peak_db: -7.5,  velocity_estimate: 100, original_filename: 'drdre_bass_note_000000ms.wav',    near_duplicate_of: null },
+  { id: 9,  instrument_family: 'fx',      instrument_category: 'impact',       onset_ms: 3750, duration_ms: 800, peak_db: -5.2,  velocity_estimate: 120, original_filename: 'drdre_impact_003750ms.wav',       near_duplicate_of: null },
+  { id: 10, instrument_family: 'drums',   instrument_category: 'tom_floor',    onset_ms: 2812, duration_ms: 380, peak_db: -10.1, velocity_estimate:  85, original_filename: 'drdre_tom_floor_002812ms.wav',    near_duplicate_of: null },
+]
+
+export const mockKits = [
+  {
+    id: 1,
+    name: 'Auto: drdre_track.wav',
+    kit_type: 'drum_kit',
+    kit_coherence_score: 0.87,
+    members: [
+      { role: 'kick',         sample_id: 1,  sample: mockSamples[0] },
+      { role: 'snare',        sample_id: 2,  sample: mockSamples[1] },
+      { role: 'hihat_closed', sample_id: 3,  sample: mockSamples[2] },
+      { role: 'clap',         sample_id: 6,  sample: mockSamples[5] },
+      { role: 'tom_floor',    sample_id: 10, sample: mockSamples[9] },
+    ],
+  },
+]

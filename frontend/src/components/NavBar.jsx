@@ -4,6 +4,8 @@ const VIEWS = [
   { id: 'video',      label: 'Video' },
   { id: 'transforms', label: 'Transforms' },
   { id: 'loops',      label: 'Loops' },
+  { id: 'stems',      label: 'Stems' },
+  { id: 'samples',    label: 'Samples' },
   { id: 'runs',       label: 'Runs' },
   { id: 'dsp',        label: 'DSP' },
 ]

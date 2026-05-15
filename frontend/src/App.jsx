@@ -7,6 +7,8 @@ import TransformsBrowser from './components/TransformsBrowser'
 import LoopsBrowser from './components/LoopsBrowser'
 import RunDashboard from './components/RunDashboard'
 import DSPBrowser from './components/DSPBrowser'
+import StemsView from './components/StemsView'
+import SamplesView from './components/SamplesView'
 import DetailPanel from './components/DetailPanel'
 
 export default function App() {
@@ -24,6 +26,8 @@ export default function App() {
           {view === 'loops'      && <LoopsBrowser />}
           {view === 'runs'       && <RunDashboard />}
           {view === 'dsp'        && <DSPBrowser />}
+          {view === 'stems'      && <StemsView />}
+          {view === 'samples'    && <SamplesView />}
         </main>
 
         {selected && (
