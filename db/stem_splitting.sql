@@ -138,6 +138,11 @@ CREATE TABLE IF NOT EXISTS public.roseglassdb_stem_split_jobs
     finished_at          timestamptz,
     error_text           text,
     notes                text,
+    -- Dynamic/windowed NMF params. NULL = single-pass (default).
+    -- Example: {"window_ms": 500, "hop_ms": 125, "allow_basis_drift": true}
+    -- window_ms: analysis window length. hop_ms: step between windows.
+    -- allow_basis_drift: if true, W matrix is re-estimated per window (time-varying NMF).
+    window_params        jsonb,
     created_at           timestamptz DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT roseglassdb_stem_split_jobs_pkey PRIMARY KEY (id)
 );
@@ -201,6 +206,44 @@ ALTER TABLE IF EXISTS public.roseglassdb_audio_stems
 ALTER TABLE IF EXISTS public.roseglassdb_audio_stems
     ADD CONSTRAINT fk_ras_stem FOREIGN KEY (stem_audio_id)
     REFERENCES public.roseglassdb_master_audio (id) ON DELETE RESTRICT;
+
+-- ─────────────────────────────────────────────
+-- NMF BASIS COMPONENTS
+-- Stores the W matrix (spectral dictionary) from NMF/ICA jobs.
+-- One row per component per job (or per window if time-varying).
+-- This is what you'd visualize as a mini-spectrogram per component so
+-- the user can see "this one is mostly bass transient, this is the
+-- 2kHz resonance" and decide whether to keep/merge/discard.
+--
+-- basis_vector: serialized float32 array — the spectral fingerprint
+--   (frequency-domain magnitude profile for this component).
+--   Stored as bytea for compactness; length = FFT bins (typically 1024 or 2048).
+-- activation_stats: summary of the H row (when this component fires):
+--   { "mean": 0.12, "max": 0.87, "sparsity": 0.74, "peak_ms": [340, 1820, ...] }
+-- window_index: NULL for single-pass jobs. For time-varying NMF, identifies
+--   which analysis window this basis came from (0-based, step = hop_ms).
+-- suggested_label: auto-assigned from dominant frequency band and activation
+--   pattern — e.g. 'low_transient', 'mid_tonal', 'high_noise'. Worker fills this.
+-- ─────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.roseglassdb_nmf_bases
+(
+    id               serial NOT NULL,
+    job_id           integer NOT NULL,
+    component_index  integer NOT NULL,   -- 0-based within this job/window
+    window_index     integer,            -- NULL = single-pass; 0-based for time-varying
+    basis_vector     bytea,              -- serialized float32 spectral fingerprint
+    activation_stats jsonb,
+    suggested_label  text,
+    CONSTRAINT roseglassdb_nmf_bases_pkey PRIMARY KEY (id),
+    CONSTRAINT ux_rnb_job_component_window UNIQUE (job_id, component_index, window_index)
+);
+
+CREATE INDEX IF NOT EXISTS ix_rnb_job ON public.roseglassdb_nmf_bases(job_id);
+
+ALTER TABLE IF EXISTS public.roseglassdb_nmf_bases
+    ADD CONSTRAINT fk_rnb_job FOREIGN KEY (job_id)
+    REFERENCES public.roseglassdb_stem_split_jobs (id) ON DELETE CASCADE;
 
 -- ─────────────────────────────────────────────
 -- NOTIFY TRIGGER

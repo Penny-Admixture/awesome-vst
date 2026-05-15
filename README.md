@@ -144,13 +144,94 @@ Each loop lands in `roseglassdb_audio_loops` with `offset_ms` (exact position) a
 
 ---
 
+## Stem splitting
+
+`db/stem_splitting.sql` runs loops through multiple splitters in parallel. Each stem IS a `roseglassdb_master_audio` row — provenance intact, sha256 dedup applies.
+
+| Splitter | Method | Good for |
+|---|---|---|
+| `demucs-htdemucs` | ML (transformer) | Conventional music, highest quality |
+| `spleeter-4stem` | ML | Fast bulk passes |
+| `open-unmix` | ML | Strong vocal isolation |
+| `nmf-adaptive` | NMF | Electronic, noise, experimental — no assumed taxonomy |
+| `ica-adaptive` | ICA | Genuinely independent sources |
+| `crossover-4band` | Frequency band | Anything — deterministic, zero bleed, no ML |
+| `crossover-2band` | Frequency band | Quick 80Hz bass/above split |
+
+Routing is driven by a `spectral_profile` analysis (`material_type`: conventional / tonal / noise / sparse) stored in `roseglassdb_media_analysis`.
+
+### Adaptive splitter visualization (NMF/ICA)
+
+For NMF and ICA jobs, `roseglassdb_nmf_bases` stores the W matrix — one spectral fingerprint per component. Each row is a mini-spectrogram showing what frequency content that component carries. The UI can render these as small spectrum plots so you can see "this one is the low transient, this is the 2kHz ring" and choose to keep, merge, or discard components.
+
+**Dynamic/time-varying NMF**: set `window_params` on the job to re-estimate the basis dictionary per window (e.g. every 500ms). The stems can literally change their separation strategy mid-track. `roseglassdb_nmf_bases.window_index` tracks which window each basis came from.
+
+```sql
+-- Run NMF with basis that re-estimates every 500ms (quarter-note at 120 BPM)
+INSERT INTO roseglassdb_stem_split_jobs
+  (source_audio_id, splitter_id, requested_stem_count, window_params)
+VALUES
+  (42, (SELECT id FROM roseglassdb_stem_splitters WHERE name='nmf-adaptive'),
+   5, '{"window_ms": 500, "hop_ms": 125, "allow_basis_drift": true}');
+```
+
+---
+
+## Sample extraction / instrument library
+
+`db/sample_extraction.sql` is the "SF2 for the modern era" pipeline — strip-mine any audio material for reusable one-shots and build a searchable instrument library over time.
+
+**Flow:**
+1. Source audio (full track, or a stem from a split job) → `roseglassdb_sample_extraction_jobs`
+2. Worker runs onset detection (Essentia) or pitch-segmented note tracking
+3. Each hit/note → `roseglassdb_master_audio` row + `roseglassdb_instrument_samples` row
+4. Embedding computed, HNSW index updated → cosine similarity search ready
+5. Near-duplicate check: if cosine similarity to existing sample of same category > 0.95, sets `near_duplicate_of` + `similarity_score` (doesn't discard — flags for UI collapsing)
+6. Auto-kit created from all samples in the same extraction job
+
+**Taxonomy:**
+
+| Family | Categories |
+|---|---|
+| `drums` | kick, snare, hihat_closed, hihat_open, clap, rimshot, tom_*, cymbal_*, shaker, perc_other |
+| `melodic` | piano_note, synth_lead, synth_stab, synth_pad, guitar_note, string_note, brass_note, organ_note |
+| `bass` | bass_note, sub_hit, bass_stab |
+| `fx` | riser, impact, downlifter, sweep, texture |
+| `vocal` | vocal_chop, adlib, breath |
+
+**Kit coherence**: samples from the same extraction job auto-form a `roseglassdb_sample_kits` row. `kit_coherence_score` (0–1) is computed from transient envelope consistency and spectral centroid variance — high score means these sounds clearly came from the same session/processing chain and play together naturally.
+
+**Finding similar kicks** — the HNSW embedding index + instrument_category filter gives you the latent kick-drum space for free:
+```sql
+SELECT * FROM find_similar_samples(sample_id := 88, max_results := 20);
+-- Returns the 20 most perceptually similar kicks to sample 88
+```
+
+---
+
+## Schema files
+
+```
+db/
+  video_and_analysis.sql    — video + media_analysis tables (run first)
+  analysis_refinements.sql  — model registry, detected objects, audio segments,
+                              SQL helpers, NOTIFY trigger
+  beat_slicing.sql          — loop extraction configs + jobs + preview function
+  stem_splitting.sql        — stem splitter registry, split jobs, NMF bases
+  sample_extraction.sql     — instrument sample library, kits, similarity search
+  schema.md                 — Mermaid ERDs for all subsystems
+```
+
+---
+
 ## Stack
 
 - PostgreSQL + pgvector
 - PostgREST (recommended API layer)
 - React 18 + Vite + Tailwind CSS + Zustand
-- Essentia (MIR: BPM, beats, key, spectral)
+- Essentia (MIR: BPM, beats, key, spectral, onset detection)
 - AF-Next Captioner / Music Flamingo (audio semantic layer)
 - Qwen3-VL-8B Instruct (image captioning/tagging)
+- Demucs / Spleeter / Open-Unmix / NMF / ICA / crossover (stem splitting)
 - HNSW index for embedding similarity
-- PostgreSQL LISTEN/NOTIFY for worker automation
+- PostgreSQL LISTEN/NOTIFY for worker automation (4 channels)
