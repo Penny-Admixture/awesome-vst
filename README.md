@@ -1,124 +1,103 @@
-# Awesome VST [![Awesome](https://awesome.re/badge.svg)](https://awesome.re)
+# roseglassdb
 
-A curated list of [VST](https://en.wikipedia.org/wiki/Virtual_Studio_Technology) plugins.
+A PostgreSQL-backed system for tracking **media artifacts and their full provenance** — images, audio, video — through transform pipelines, AI analysis, and perceptual geometry.
 
-This list is not intended to encompass all available plugins but rather to serve as a reference for the most useful and time-tested plugins, presented with a straightforward structure and concise, no-nonsense descriptions.
+**[Try the frontend on StackBlitz →](https://stackblitz.com/github/Penny-Admixture/awesome-vst/tree/main/frontend)**
 
-Feel free to suggest your favorite plugins, but please refrain from copying random products from the oversaturated VST marketplaces. Reference what you actually use and find indispensable in your work, and keep your descriptions succinct. This list is designed for users, not for sales purposes.
+---
 
-## Contents
+## What it is
 
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+Every image, audio file, and video in roseglassdb knows:
+- where it came from (`source_image_id`, `source_audio_id`)
+- what produced it (`produced_by_sequence_id`, `produced_by_sos_id`, `produced_iteration`)
+- what has been said about it (captions, tags, audio features, bounding boxes)
+- how it relates perceptually to other artifacts (Riemannian inner products)
 
-- [Synths](#synths)
-  - [General](#general)
-  - [Chiptune](#chiptune)
-  - [Hardware synth recreations](#hardware-synth-recreations)
-  - [SFX](#sfx)
-- [Drums and Percussion](#drums-and-percussion)
-- [Effects](#effects)
-  - [Reverbs](#reverbs)
-  - [Delays](#delays)
-  - [Granular Processors](#granular-processors)
-  - [Saturators](#saturators)
-  - [Other effects](#other-effects)
-- [Mixing and Mastering](#mixing-and-mastering)
-- [Max for Live Devices](#max-for-live-devices)
+Nothing is ever overwritten. Derived artifacts point back to their parents. Runs are immutable records.
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+---
 
-## Synths
+## Core concepts
 
-### General
+### Media atoms
+`roseglassdb_master_images` and `roseglassdb_master_audio` are the source of truth. Both store bytes or an external path, sha256 for dedup, full metadata, and self-referential FKs for the derivation chain.
 
-- [Baby Audio Atoms](https://babyaud.io/atoms) - Physical modeling synthesizer. Demos: [1](https://youtu.be/z57s9xPYUX0), [2](https://youtu.be/t9V_othnsPw).
-- [U-He Diva](https://u-he.com/products/diva/) - "Dinosaur Impersonating Virtual Analogue synthesizer". Demos: [1](https://youtu.be/-PO84tYA6mA).
-- [Native Instruments Massive X](https://www.native-instruments.com/en/products/komplete/synths/massive-x/) - NI's flagship synth. Demos: [1](https://youtu.be/T4mfM73egsQ?si=rXQvDt2U8aznFgBo), [2](https://youtu.be/BYzagFV0eLM).
-- [TAL NoiseMaker](https://tal-software.com/products/tal-noisemaker) - (Free) Virtual analog synthesizer with a great sound and low CPU usage. 128 factory presets included. Demo: [1](https://youtu.be/caw0PO31etA), [2](https://youtu.be/ZoMsXVFoAno).
-- [Kilohearts Phase Plant](https://kilohearts.com/products/phase_plant) - An award-winning, semi-modular softsynth. Demos: [1](https://youtu.be/-GvapBwcUDI).
-- [Arturia Pigments](https://www.arturia.com/products/software-instruments/pigments/overview) - Polychrome software synthesizer, a VST with the power to create any sound, from the best mix-ready modern presets to deep custom sound design. Demos: [1](https://youtu.be/fdkc8bnMUhY), [2](https://youtu.be/JUxs2JzJOio).
-- [Xfer Serum](https://xferrecords.com/products/serum/) - Advanced wavetable synthesizer. Demos: [1](https://youtu.be/TZm4UjzqvL4).
-- [Vital](https://vital.audio/) - Spectral warping wavetable synth. Demos: [1](https://youtu.be/7kNvSXxZrs4).
-- [U-He Zebralette](https://u-he.com/products/zebralette/) - (Free) Easy spectral synth with an advanced wavefor editor and overall impressive feature set for a free synt. Demos: [1](https://youtu.be/G4HCHQteJlk), [2](https://youtu.be/gnevghILe8o).
+### Video = frame index + audio track
+`roseglassdb_master_videos` holds fps/duration/dimensions and an optional `audio_id`. Frames live in `roseglassdb_video_frames` as ordered `(video_id, frame_index, image_id)` rows — about 20 bytes each. Identical frames (held frames, freeze-frames) share one `image_id` via sha256 dedup. A 30fps/60s video costs ~36KB of index, not terabytes.
 
-### Chiptune
+### Transform pipeline (fsviewer)
+`fsviewer_transforms` are atomic color/sharpen operations. `fsviewer_transform_sequences` chain them into named recipes. `fsviewer_sequence_of_sequences` chains sequences together. Every execution is logged in `image_transform_sequence_runs` and `image_transform_sequence_run_steps` with per-step timing, intermediate images, and error text.
 
-- [BPB 64](https://app.gumroad.com/d/bad87a6ced5edb7ca829cd6f8d006e2d) - (Free) Commodore 64 Virtual Instrument. Demos: [1](https://www.youtube.com/watch?v=5c6mQljB8MM).
-- [Plogue Chipsynth C64](https://www.plogue.com/products/chipsynth-c64.html) - SID sound chip emulation. Demos: [1](https://youtu.be/I0XxqbbT5qA).
-- [Plogue Chipsynth MD](https://www.plogue.com/products/chipsynth-md.html) - OPN2 (YM2612) emulation (Sega Mega Drive/Genesis). Demos: [1](https://youtu.be/HYD83w5hr_s).
-- [Plogue SFC](https://www.plogue.com/products/chipsynth-sfc.html) - 16-bit era timbre layering synthesizer (Super Nintendo Entertainment System). Demos: [1](https://youtu.be/wizYHoVxp4k).
+### Perceptual geometry
+`fsviewer_sequence_riemannian_inner_products` stores pairwise `theta_angle` distances between sequences in a configurable geometry basis (`perceptual`, `color`, `texture`, `audio`). Use `find_perceptual_neighbors(sequence_id)` to query it.
 
-### Hardware synth recreations
+### Audio loops and DSP
+`roseglassdb_audio_loops` slices source audio at `offset_ms` into named loops. `roseglassdb_loop_arrangement_templates` sequences those loops with repeat counts. `foobar2000_dsps` / `foobar2000_dsp_settings` / `foobar2000_dsp_settings_sequences` model the DSP processing chain as first-class data.
 
-- [Arturia Acid V](https://www.arturia.com/products/software-instruments/acid-v/overview) - 303 emulator, "corrosive bassline machine" as Arturia call it. Demos: [1](https://www.youtube.com/live/SzK9h2quTKo), [2](https://youtu.be/WmFIDpPmba4).
-- [Cherry Audio DCO-106](https://cherryaudio.com/products/dco-106) - Roland Juno-106 recreation. Demos: [1](https://youtu.be/QPzn3kkHcI0).
-- [Cherry Audio GX-80](https://cherryaudio.com/products/gx-80) - Yamaha CS-80 emulation. Demos: [1](https://youtu.be/5h-oki0UOFg), [2](https://youtu.be/MVJoT--Ix_w).
-- [D16 Phoscyon](https://d16.pl/phoscyon) - Acid line synth, 303 silver box emulator. Demos: [1](https://youtu.be/_XRoT-FdqjU).
-- [Dexed](https://asb2m10.github.io/dexed/) - (Free) Open source Yamaha DX7 emulation and MIDI cartridge manager. Demos: [1](https://youtu.be/wSs1-020nNY).
+### AI analysis layer
+`roseglassdb_media_analysis` holds captions, tag sets, audio features, and vector embeddings for any image, audio, or video. A `CHECK` constraint ensures exactly one target FK is set. An HNSW index on `embedding vector(1024)` enables cosine similarity queries.
 
-### SFX
+`roseglassdb_analysis_models` is a versioned registry of the models that produced the analysis. `roseglassdb_image_detected_objects` stores bounding-box results. `roseglassdb_audio_segments` stores temporal segmentation (intro/verse/chorus/drop) as queryable rows.
 
-- [AudioThing Noises](https://www.audiothing.net/instruments/noises/) - An experimental instrument with a playful and inspiring interface designed to bring a vast world of noise into your music and audio production. Demos: [1](https://youtu.be/Nh8QxkOAokw).
+Use `search_media_by_embedding(query_vec, 'audio', 10)` for cross-modal search — find audio closest to an image's CLIP embedding, or images closest to a music description.
 
-## Drums and Percussion
+### Vector search
+`anythingllm_vectors` is the cross-modal semantic brain — 1024-dim embeddings with JSONB metadata, usable for RAG and similarity retrieval across all media types.
 
-- [KICK 2](https://www.sonicacademy.com/products/kick-2) - Kick drum synthesizer. Demos: [1](https://youtu.be/lvHjh2AWe8Y).
-- [ALM Motto Akemie](https://busycircuits.com/motto-akemie/) - FM drum synth and step sequencer. Demos: [1](https://youtu.be/42QbIRc43u8), [2](https://youtu.be/vr8r9NlSnHE).
-- [Fors Opal](https://fors.fm/opal) - Drum synthesizer and sequencer. Demos: [1](https://youtu.be/87OGkyDBjvI), [2](https://youtu.be/kcuIYAj3y-E).
-- [AudioDamage Replicant](https://www.audiodamage.com/products/ad056-replicant-3) - IDM-style glitchy rhythmic patterns with various effects and modulations. Demos: [1](https://youtu.be/yWPyRSURYFQ), [2](https://www.youtube.com/@d16group).
-- [Klevgrand Slammer](https://klevgrand.se/products/slammer) - A multi-sampled drum plugin that contains 30 different instruments made from many carefully recorded and edited samples. Demos: [1](https://youtu.be/OVVxTH1pseU?si=AEhozygV04OMTOwl).
+---
 
-## Effects
+## Schema
 
-### Reverbs
+```
+db/
+  video_and_analysis.sql      — video + media_analysis tables (run first)
+  analysis_refinements.sql    — model registry, detected objects, audio segments,
+                                SQL helper functions, NOTIFY trigger
+  schema.md                   — Mermaid ERDs for all subsystems
+```
 
-- [Eventide Blackhole](https://www.eventideaudio.com/plug-ins/blackhole/) - VST version of the effect pedal. Demos: [1](https://youtu.be/uxhrvO1imJs).
-- [Kilohearts Convolver](https://kilohearts.com/products/convolver) - To convolve is to multiply one sound with another. Sort of. Demos: [1](https://youtu.be/VwWJTDzW-mQ), [2](https://youtu.be/uvMKOkkCwBU).
-- [LiquidSonics Seventh Heaven](https://www.liquidsonics.com/software/seventh-heaven/) - Convolution reverb, Bricasti M7 emulation. Demos: [1](https://youtu.be/gzjxnSW_7nM?si=hTUNgzqMRVEl1exj).
-- [Valhalla Super Massive](https://valhalladsp.com/shop/reverb/valhalla-supermassive/) - (Free) Massive reverbs, harmonic echoes, space sounds. Demos: [1](https://youtu.be/O0ItJOb_T34), [2](https://youtu.be/cdu6AH2VJWU).
-- [Valhalla VintageVerb](https://valhalladsp.com/shop/reverb/valhalla-vintage-verb/) - 22 classic digital reverbs and three color modes inspired by the most beloved reverb hardware from the 1970s and 1980s. Demos: [1](https://youtu.be/L0z7u4j3Jfg).
+PostgREST tip: table names map directly to endpoints with no backend code needed.
 
-### Delays
+```
+GET /roseglassdb_master_images?tags=cs.{landscape}
+GET /fsviewer_transform_sequences?select=*,fsviewer_sequence_steps(*)
+```
 
-- [U-He Colour Copy](https://u-he.com/products/colourcopy/) - A virtual analog effect inspired by classic bucket-brigade delays (BBD), but extended with modern features. Demos: [1](https://youtu.be/4RBb4BfaHXw).
-- [Sixth Sample Deelay](https://sixthsample.com/deelay/) - (Free) A plugin for creating reverbs from small chambers to huge cinematic swells, distortion from subtle saturation to aggressive waveshaping, modulation for making your sounds come alive, and much more. Demos: [1](https://youtu.be/fjdps2evVlw).
-- [AudioDamage Other Desert Cities](https://www.audiodamage.com/collections/software/products/ad054-other-desert-cities) - With six algorithms, each with its own unique personality, and extensive modulation capabilities, Other Desert Cities can fill multiple niches, from basic stereo dual delays to never-before-heard granular pitch-shifting chaos. Demos: [1](https://youtu.be/eX4LPBi5Zd4).
-- [AudioThing Outer Space](https://www.audiothing.net/effects/outer-space/) - A faithful emulation plugin of a famous vintage tape echo made in the early seventies. Demos: [1](https://youtu.be/xv5Up5LLxMI).
-- [Cherry Audio Stardust 201 Tape Echo](https://cherryaudio.com/products/stardust-201) - A hot-rodded interpretation of the classic Roland "Space Echo" tape echo effects of the 70s and 80s. Demos: [1](https://youtu.be/IkNWnYxYER8).
-- [Valhalla Delay](https://valhalladsp.com/shop/delay/valhalladelay/) - Valhalla DSP's take on classic and modern delay and echo units. Demos: [1](https://youtu.be/1pDVayo9GWc).
+---
 
-### Granular Processors
+## Frontend
 
-- [Emergence](https://daniel-gergely.itch.io/emergence) - Granular processor. Demos: [1](https://youtu.be/PEB5pkHjVeo), [2](https://youtu.be/9YQKSd4nW4E).
+React + Vite + Tailwind. Seven views, all wired to mock data by default — swap `USE_MOCK = false` in `src/api/client.js` and point the Vite proxy at your PostgREST instance.
 
-### Saturators
+| Tab | What it shows |
+|---|---|
+| Images | Thumbnail grid with analysis badges |
+| Audio | Track list with waveform, BPM/key/mood callouts |
+| Video | Frame dedup stats, mini frame strip, scrubber |
+| Transforms | Visual step-flow for each transform sequence |
+| Loops | Source audio ruler with loop segments, arrangement lanes |
+| Runs | Transform run history with per-step timing and errors |
+| DSP | foobar2000 DSP chain flow diagram |
 
-- [SoundToys Decapitator](https://www.soundtoys.com/product/decapitator/) - Subtle to extreme hardware-modeled saturation. Demos: [1](https://youtu.be/N0B-4rz2HTs).
+Detail panel shows ProvenanceTree (recursive lineage), AudioFeatures meters, VideoFrameScrubber, and all analysis results for the selected item.
 
-### Other effects
+### Run locally
 
-- [ChowMultiTool](https://chowdsp.com/products.html) - (Free) "Swiss Army Knife" plugin containing EQ with linear phase and "drawable" capabilities, waveshaper with minimal aliasing and lots of customizability, band-Splitter with multiple outputs and perfect reconstruction, SVF with key tracking and parameter modulation (CLAP only).
-- [Klevgrand DAW Cassette](https://klevgrand.com/products/dawcassette) - Tape Deck Emulation. Demos: [1](https://youtu.be/2Zu_OuAUPTo).
-- [Klevgrand DAW LP](https://klevgrand.com/products/dawlp) - Vinyl Player Simulation. Demos: [1](https://youtu.be/tzgKTfmFzEo).
-- [Arturia Filter MS-20](https://www.arturia.com/products/software-effects/filter-ms-20/overview) - A software emulation of the classic Korg MS-20 analog synthesizer filter. Demos: [1](https://youtu.be/-V9m3iPLGI0), [2](https://youtu.be/-gXgonwwjj0).
-- [Infiltrator](https://deviousmachines.com/product/infiltrator/) - Suite of effects processors, with 54 different modules to choose from, many of them boasting multiple sub-types. Demos: [1](https://youtu.be/EKNqcRs24dc).
-- [AudioThing Speakers](https://www.audiothing.net/effects/speakers/) - Microphone and speaker simulations. Demos: [1](https://youtu.be/-B-WS1xN0I0).
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-## Mixing and Mastering
+**[Or open instantly in StackBlitz →](https://stackblitz.com/github/Penny-Admixture/awesome-vst/tree/main/frontend)**
 
-- [Masterme](https://github.com/trummerschlunk/master_me) - Automatic audio mastering plugin for live-streaming and internet radio stations. Demo: [1](https://www.youtube.com/shorts/hIegFZ4LJMs).
-- [Musik Hack MasterPlan](https://www.musikhack.com/) - Radio-ready masters in minutes. Demos: [1](https://youtu.be/h2O4svLRgjI).
-- [TDR Nova](https://www.tokyodawn.net/tdr-nova/) - (Free) Parametric dynamic equalizer. Demos: [1](https://youtu.be/1CHFv4mWQYM).
-- [FabFilter Pro-L 2](https://www.fabfilter.com/products/pro-l-2-limiter-plug-in) - True peak limiter plug-in, with multiple advanced limiting algorithms and extensive level and loudness metering. Demos: [1](https://youtu.be/oMJeWXtJODc).
-- [FabFilter Pro-Q 3](https://www.fabfilter.com/products/pro-q-3-equalizer-plug-in) - High quality parametric equalizer. Demos: [1](https://youtu.be/IDMrLQGd21w).
-- [Izotope Tonal Balance Control](https://www.izotope.com/en/products/tonal-balance-control-2.html) - Overcome your listening environment and make mixes that translate. Demos: [1](https://youtu.be/PhAPM2XQWGI).
-- [Eventide SplitEQ](https://www.eventideaudio.com/plug-ins/spliteq/)
+---
 
-## Max for Live Devices
+## Stack
 
-Notable extensions for [Max for Live](https://www.ableton.com/en/live/max-for-live/), which, while not formally VST plugins, are still worth mentioning.
-
-- [Altar of Wisdom MultiOscillo](https://altarofwisdom.gumroad.com/l/multioscillo) - Oscilloscope. Demos: [1](https://youtu.be/OmbAe6leINU).
-- [SL Oscilloscope](https://searchlife.gumroad.com/l/sl-oscilloscope) - (Free) Oscilloscope, goniometer, phase correlation meter, stereo balance meter and peak level indicator. Demos: [1](https://youtu.be/0qAzO6tQvoA).
-- [IFTAH STING](https://maxforlive.com/library/device/8357/sting-by-iftah-a-really-nice-acid-line-generator) - Acid line generator. Demo: [1](https://youtu.be/ywF4SFfwKs8).
+- PostgreSQL + pgvector
+- PostgREST (recommended API layer)
+- React 18 + Vite + Tailwind CSS + Zustand
+- HNSW index for embedding similarity
+- PostgreSQL LISTEN/NOTIFY for auto-analysis worker pattern
