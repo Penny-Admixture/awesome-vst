@@ -327,3 +327,99 @@ export const mockVideos = [
     analysis: [],
   },
 ]
+
+// ── Transform runs ────────────────────────────────────────────────────────────
+
+export const mockRuns = [
+  {
+    id: 1,
+    input_image_id: 1,
+    input_image: null, // resolved below
+    produced_by_sequence_id: 1,
+    sequence_name: 'Vintage Film',
+    status: 'complete',
+    started_at: '2026-05-14T10:00:00Z',
+    finished_at: '2026-05-14T10:00:02.924Z',
+    steps: [
+      { id: 1, step_index: 0, transform_id: 5, transform_name: 'Lift Shadows',   duration_ms: 423, error_text: null },
+      { id: 2, step_index: 1, transform_id: 2, transform_name: 'Warm Grade',      duration_ms: 312, error_text: null },
+      { id: 3, step_index: 2, transform_id: 3, transform_name: 'USM Crisp',        duration_ms: 189, error_text: null },
+    ],
+  },
+  {
+    id: 2,
+    input_image_id: 2,
+    input_image: null,
+    produced_by_sequence_id: 2,
+    sequence_name: 'Cold Hi-Con',
+    status: 'error',
+    started_at: '2026-05-14T11:30:00Z',
+    finished_at: '2026-05-14T11:30:00.541Z',
+    steps: [
+      { id: 4, step_index: 0, transform_id: 1, transform_name: 'Boost Contrast', duration_ms: 501, error_text: null },
+      { id: 5, step_index: 1, transform_id: 4, transform_name: 'Cool Desaturate', duration_ms: null, error_text: 'Out of memory processing 5000×3333 tiff' },
+    ],
+  },
+  {
+    id: 3,
+    input_image_id: 3,
+    input_image: null,
+    produced_by_sequence_id: 3,
+    sequence_name: 'Neutral Sharpen',
+    status: 'complete',
+    started_at: '2026-05-14T14:05:00Z',
+    finished_at: '2026-05-14T14:05:00.812Z',
+    steps: [
+      { id: 6, step_index: 0, transform_id: 3, transform_name: 'USM Crisp', duration_ms: 812, error_text: null },
+    ],
+  },
+]
+
+// Resolve input image refs
+mockRuns.forEach(run => {
+  // mockImages is defined above; lazy reference to avoid circular
+  run._resolveImages = (images) => {
+    run.input_image = images.find(i => i.id === run.input_image_id) ?? null
+  }
+})
+
+// ── DSP chains ────────────────────────────────────────────────────────────────
+
+export const mockDSPs = [
+  { id: 1, name: 'Parametric EQ',      slug: 'peq',       vendor: 'foo_dsp',   version: '1.4' },
+  { id: 2, name: 'Resampler',          slug: 'resampler', vendor: 'foo_dsp',   version: '2.1' },
+  { id: 3, name: 'Dynamic Compressor', slug: 'dyn_comp',  vendor: 'foo_dsp',   version: '1.0' },
+  { id: 4, name: 'Limiter',            slug: 'limiter',   vendor: 'foo_dsp',   version: '1.2' },
+  { id: 5, name: 'Reverb',             slug: 'reverb',    vendor: 'foo_dsp',   version: '3.0' },
+]
+
+export const mockDSPSettings = [
+  { id: 1, dsp_id: 1, name: 'Flat monitor curve',   params: { bands: [{ freq: 1000, gain: 0 }] } },
+  { id: 2, dsp_id: 1, name: 'Loudness boost',       params: { bands: [{ freq: 80, gain: 4 }, { freq: 10000, gain: 3 }] } },
+  { id: 3, dsp_id: 3, name: 'Gentle squeeze',       params: { threshold: -18, ratio: 3, attack: 10, release: 100 } },
+  { id: 4, dsp_id: 4, name: '-0.1 dBFS ceiling',    params: { ceiling: -0.1 } },
+  { id: 5, dsp_id: 5, name: 'Room small',           params: { size: 0.2, decay: 0.4, wet: 0.12 } },
+]
+
+// Resolve DSP refs
+mockDSPSettings.forEach(s => {
+  s.dsp = mockDSPs.find(d => d.id === s.dsp_id) ?? null
+})
+
+export const mockDSPSequences = [
+  {
+    id: 1, name: 'Mastering chain',
+    steps: [
+      { id: 1, step_index: 0, dsp_settings_id: 2, settings: mockDSPSettings[1], bypass: false, wet_dry: 1.0 },
+      { id: 2, step_index: 1, dsp_settings_id: 3, settings: mockDSPSettings[2], bypass: false, wet_dry: 1.0 },
+      { id: 3, step_index: 2, dsp_settings_id: 4, settings: mockDSPSettings[3], bypass: false, wet_dry: 1.0 },
+    ],
+  },
+  {
+    id: 2, name: 'Monitoring + Room',
+    steps: [
+      { id: 4, step_index: 0, dsp_settings_id: 1, settings: mockDSPSettings[0], bypass: false, wet_dry: 1.0 },
+      { id: 5, step_index: 1, dsp_settings_id: 5, settings: mockDSPSettings[4], bypass: true,  wet_dry: 0.15 },
+    ],
+  },
+]

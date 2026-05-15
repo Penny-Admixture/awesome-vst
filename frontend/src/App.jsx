@@ -5,6 +5,8 @@ import AudioBrowser from './components/AudioBrowser'
 import VideoBrowser from './components/VideoBrowser'
 import TransformsBrowser from './components/TransformsBrowser'
 import LoopsBrowser from './components/LoopsBrowser'
+import RunDashboard from './components/RunDashboard'
+import DSPBrowser from './components/DSPBrowser'
 import DetailPanel from './components/DetailPanel'
 
 export default function App() {
@@ -20,6 +22,8 @@ export default function App() {
           {view === 'video'      && <VideoBrowser />}
           {view === 'transforms' && <TransformsBrowser />}
           {view === 'loops'      && <LoopsBrowser />}
+          {view === 'runs'       && <RunDashboard />}
+          {view === 'dsp'        && <DSPBrowser />}
         </main>
 
         {selected && (
